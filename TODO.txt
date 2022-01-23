@@ -3,9 +3,9 @@ TODO:
 - [ ] Lexer
     - [x] Identifiers / keywords
     - [ ] Strings
-    - [ ] Numbers
+    - [x] Numbers
     - [x] Single-character tokens (i.e. parentheses, braces, etc.)
-    - [ ] Token locations (col, line #)
+    - [x] Token locations (col, line #)
 - [ ] Parser
     - [ ] Procs
     - [ ] Copy/move statement (x = y)
