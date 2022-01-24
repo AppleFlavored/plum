@@ -1,3 +1,5 @@
+// This is a comment...
 proc main {
-    12 7 2.5 245.002
+    //Comment here, too.
+    1 2 3 // Comment at the end of a line 4 5 6
 }

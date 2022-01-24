@@ -77,7 +77,7 @@ def lex_file(path: str) -> list[Token]:
             ch = char(line, col)
             loc: Location = [path, offs, col + 1]
             tok = Token(None, ch, loc)
-
+        
             if ch.isalpha() or ch == '_':
                 start = col
                 while char(line, col).isalnum() or char(line, col) == '_':
@@ -102,7 +102,13 @@ def lex_file(path: str) -> list[Token]:
                 tok.lexeme = line[start:col]
             else:
                 col += 1
-                if ch == '{':
+                if ch == '/':
+                    if char(line, col) == '/':
+                        col = len(line)
+                        continue
+                    else:
+                        tok.kind = TokenKind.Slash
+                elif ch == '{':
                     tok.kind = TokenKind.OpenParen
                 elif ch == '}':
                     tok.kind = TokenKind.CloseParen
@@ -115,18 +121,18 @@ def lex_file(path: str) -> list[Token]:
     
 def process_file(path: str):
     if not os.path.isfile(path):
-        print("error: file does not exist: %s" % path)
+        print("error: File does not exist: %s" % path)
         sys.exit(1)
 
     tokens = lex_file(path)
-    # debug: print(t) for t in tokens]
+    # debug: [print(t) for t in tokens]
     parse_file(tokens)
 
 def main():
     argv = sys.argv[1:]
 
     if len(argv) == 0:
-        print("error: no input file given")
+        print("error: No input file given")
         exit(1)
 
     process_file(argv[0])
