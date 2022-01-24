@@ -46,14 +46,13 @@ def syntax_error(token: Token, msg: str):
 def parse_file(tokens: list[Token]):
     while len(tokens) > 0:
         tok = tokens.pop(0)
-        match tok.kind:
-            case TokenKind.Proc:
-                name = tokens.pop(0)
-                if not expect_token(name, TokenKind.Identifier):
-                    syntax_error(tok, "Expected procedure name but got `%s`" % name.lexeme)
-                    continue
-            case _:
-                syntax_error(tok, "Unexpected top-level token: `%s`" % tok.lexeme)
+        if tok.kind == TokenKind.Proc:
+            name = tokens.pop(0)
+            if not expect_token(name, TokenKind.Identifier):
+                syntax_error(tok, "Expected procedure name but got `%s`" % name.lexeme)
+                continue
+        else:
+            syntax_error(tok, "Unexpected top-level token: `%s`" % tok.lexeme)
 
 def char(line: str, index: int) -> str:
     if index >= len(line):
