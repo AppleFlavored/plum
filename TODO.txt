@@ -2,9 +2,11 @@ TODO:
 
 - [ ] Lexer
     - [x] Identifiers / keywords
-    - [ ] Strings
+    - [x] Strings
+    - [ ] Character escaping in strings
     - [x] Numbers
     - [x] Single-character tokens (i.e. parentheses, braces, etc.)
+    - [x] Single-line comments
     - [x] Token locations (col, line #)
 - [ ] Parser
     - [ ] Procs

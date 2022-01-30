@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import Generator
 
 import os
 import sys
@@ -8,7 +9,6 @@ Location = tuple[str, int, int] # [filename, line, col]
 
 class TokenKind(Enum):
     Unknown = auto()
-    EOF = auto()
 
     # Multi-character tokens
     Identifier = auto()
@@ -17,14 +17,19 @@ class TokenKind(Enum):
 
     # Keywords
     Proc = auto()
+    Const = auto()
 
     # Single-character tokens
+    Equal = auto()
     Plus = auto()
     Minus = auto()
     Star = auto()
     Slash = auto()
     OpenParen = auto()
     CloseParen = auto()
+    OpenBrace = auto()
+    CloseBrace = auto()
+    Semicolon = auto()
 
 @dataclass
 class Token:
@@ -34,49 +39,36 @@ class Token:
 
 keyword_map = {
     "proc": TokenKind.Proc,
+    "const": TokenKind.Const,
 }
 
-def expect_token(token: Token, expected: TokenKind) -> bool:
-    return token.kind == expected
-
-def syntax_error(token: Token, msg: str):
-    file, line, col = token.loc
+def syntax_error(loc: Location, msg: str):
+    file, line, col = loc
     print("%s:%d:%d: error: %s" % (file, line, col, msg))
 
 def parse_file(tokens: list[Token]):
     while len(tokens) > 0:
         tok = tokens.pop(0)
-        if tok.kind == TokenKind.Proc:
-            name = tokens.pop(0)
-            if not expect_token(name, TokenKind.Identifier):
-                syntax_error(tok, "Expected procedure name but got `%s`" % name.lexeme)
-                continue
-        else:
-            syntax_error(tok, "Unexpected top-level token: `%s`" % tok.lexeme)
 
 def char(line: str, index: int) -> str:
     if index >= len(line):
         return '\n'
     return line[index]
 
-# lex_file is responsible for scanning the input file
-# for tokens. This function does not do error checking.
-# Error checking is done when parsing tokens.
-def lex_file(path: str) -> list[Token]:
+def lex_file(path: str) -> Generator[Token, None, None]:
     with open(path, "r", encoding="utf-8") as f:
         contents = f.read()
 
-    tokens: list[Token] = []
     lines = contents.splitlines()
     for offs, line in enumerate(lines, 1):
         col = 0
         while col < len(line):
-            while line[col].isspace():
+            if char(line, col).isspace():
                 col += 1
+                continue
 
             ch = char(line, col)
             loc: Location = [path, offs, col + 1]
-            tok = Token(None, ch, loc)
         
             if ch.isalpha() or ch == '_':
                 start = col
@@ -84,9 +76,7 @@ def lex_file(path: str) -> list[Token]:
                     col += 1
                 
                 lit = line[start:col]
-
-                tok.kind = keyword_map.get(lit, TokenKind.Identifier)
-                tok.lexeme = lit
+                yield Token(keyword_map.get(lit, TokenKind.Identifier), lit, loc)
             elif ch.isdigit():
                 start = col
                 while char(line, col).isdigit():
@@ -98,34 +88,53 @@ def lex_file(path: str) -> list[Token]:
                 while char(line, col).isdigit():
                     col += 1
 
-                tok.kind = TokenKind.Number
-                tok.lexeme = line[start:col]
+                yield Token(TokenKind.Number, line[start:col], loc)
             else:
                 col += 1
-                if ch == '/':
+                if ch == '\"':
+                    start = col
+                    while char(line, col) != '\"':
+                        if char(line, col) == '\\':
+                            col += 2
+                        else:
+                            col += 1
+                    
+                    yield Token(TokenKind.String, line[start:col], loc)
+                    col += 1 # consume quote
+                elif ch == '=':
+                    yield Token(TokenKind.Equal, ch, loc)
+                elif ch == '+':
+                    yield Token(TokenKind.Plus, ch, loc)
+                elif ch == '-':
+                    yield Token(TokenKind.Minus, ch, loc)
+                elif ch == '*':
+                    yield Token(TokenKind.Star, ch, loc)
+                elif ch == '/':
                     if char(line, col) == '/':
                         col = len(line)
                         continue
                     else:
-                        tok.kind = TokenKind.Slash
+                        yield Token(TokenKind.Slash, ch, loc)
+                elif ch == ';':
+                    yield Token(TokenKind.Semicolon, ch, loc)
+                elif ch == '(':
+                    yield Token(TokenKind.OpenParen, ch, loc)
+                elif ch == ')':
+                    yield Token(TokenKind.CloseParen, ch, loc)
                 elif ch == '{':
-                    tok.kind = TokenKind.OpenParen
+                    yield Token(TokenKind.OpenBrace, ch, loc)
                 elif ch == '}':
-                    tok.kind = TokenKind.CloseParen
+                    yield Token(TokenKind.CloseBrace, ch, loc)
                 else:
-                    tok.kind = TokenKind.Unknown
-
-            tokens.append(tok)
-    
-    return tokens
+                    syntax_error(loc, "Illegal character: `%s`" % ch)
+                    yield Token(TokenKind.Unknown, ch, loc)
     
 def process_file(path: str):
     if not os.path.isfile(path):
         print("error: File does not exist: %s" % path)
         sys.exit(1)
 
-    tokens = lex_file(path)
-    # debug: [print(t) for t in tokens]
+    tokens = [token for token in lex_file(path)]
     parse_file(tokens)
 
 def main():

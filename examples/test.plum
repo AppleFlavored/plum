@@ -1,5 +1,13 @@
-// This is a comment...
+const msg = "Hello, world!";
+
 proc main {
-    //Comment here, too.
-    1 2 3 // Comment at the end of a line 4 5 6
+    rax = 1;
+    rdi = 0;
+    rsi = msg;
+    rdx = sizeof(msg);
+    syscall;
+
+    rax = 60;
+    rdi = 0;
+    syscall;
 }
