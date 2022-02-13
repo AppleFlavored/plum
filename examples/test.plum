@@ -1,13 +1,5 @@
-const msg = "Hello, world!";
+const myString = "Hello, world!"
 
-proc main {
-    rax = 1;
-    rdi = 0;
-    rsi = msg;
-    rdx = sizeof(msg);
-    syscall;
-
-    rax = 60;
-    rdi = 0;
-    syscall;
-}
+proc main in
+    rax = 1
+end
