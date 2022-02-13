@@ -38,8 +38,8 @@ proc bar in
 end
 ```
 
-Therefore, it is import to include a `ret` (return) statement at 
-the end of your procedures (if you want them to return):
+Therefore, it is important to include a `ret` (return) statement at 
+the end of your procedures:
 
 ```
 proc foo in
