@@ -1,5 +1,3 @@
-const myString = "Hello, world!"
-
-proc main in
-    rax = 1
+proc test in
+    
 end
