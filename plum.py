@@ -21,9 +21,11 @@ class TokenKind(Enum):
     Proc = auto()
     In = auto()
     End = auto()
+    Const = auto()
     Segment = auto()
 
 keywords = {
+    "const": TokenKind.Const,
     "proc": TokenKind.Proc,
     "in": TokenKind.In,
     "end": TokenKind.End,
@@ -38,46 +40,135 @@ class Token:
     lexeme: str
     loc: Location
 
+
 class Node(object): pass
 class Stmt(Node): pass
 class Expr(Node): pass
+
+class Constant(Expr):
+    def __init__(self, value: object):
+        self.value = value
+
+class Module(Node):
+    body: list[Stmt]
+
+    def __init__(self):
+        self.body = []
 
 class Proc(Stmt):
     name: str
     body: list[Stmt]
 
-def match()
+    def __init__(self):
+        self.body = []
+
+class ConstAssign(Stmt):
+    name: str
+    expr: Expr
+
+def dump(node: Node, level: int = 0):
+    def _format(indent: int, text: str):
+        return '{0}{1}'.format('  ' * indent, text)
+
+    value = "Node"
+
+    if isinstance(node, Module):
+        value = "Module"
+    elif isinstance(node, Proc):
+        value = 'Proc [{0}]'.format(node.name)
+    elif isinstance(node, Stmt):
+        value = '{0} [{1} = {2}]'.format(node.__class__.__name__, node.name, node.expr.value)
+
+    print(_format(level, value))
+    try:
+        for c in node.body:
+            dump(c, level + 1)
+    except AttributeError:
+        pass
 
 class Parser:
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens
         self.current = None
 
-    def parse(self):
+    def parse(self, module: Module):
+        self.module = module
+
         while len(self.tokens) > 0:
             self.advance()
             if self.current.kind == TokenKind.Proc:
-                self.advance()
-                if self.current.kind == TokenKind.Ident:
-                    self.advance() # expect `in`
-                    while self.current.kind != TokenKind.End:
-                        self.advance()
-                else:
-                    (filename, line, col) = self.current.loc
-                    print("%s:%i:%i: Expected procedure name but got `%s`" % (filename, line, col, self.current.lexeme))
+                self.parse_proc()
             else:
-                pass
-       
+                self.error("Unexpected token: %s" % self.current.lexeme)
+
+    def parse_proc(self):
+        self.advance() # Skip 'proc'
+        proc = Proc()
+        
+        if not self.check(TokenKind.Ident):
+            self.error("Expected procedure name but got `%s`" % self.current.lexeme)
+            return
+        
+        proc.name = self.current.lexeme
+        self.advance() # Skip ident
+
+        if not self.check(TokenKind.In):
+            self.error("Expected `in` but got `%s`" % self.current.lexeme)
+            return
+
+        self.advance() # Skip 'in'
+        while self.current.kind != TokenKind.End:
+            self.parse_statement(proc)
+
+        self.module.body.append(proc)
+
+    def parse_statement(self, parent: Proc | Module):
+        if self.current.kind == TokenKind.Const:
+            self.advance()
+            const = ConstAssign()
+
+            if not self.check(TokenKind.Ident):
+                self.error("Expected constant name but got `%s`" % self.current.lexeme)
+                return
+            
+            const.name = self.current.lexeme
+            self.advance()
+
+            if not self.check(TokenKind.Equal):
+                self.error("Expected `=` but got `%s`" % self.current.lexeme)
+                return
+            self.advance()
+
+            if not self.check(TokenKind.Int):
+                self.error("Expected expression but got `%s`" % self.current.lexeme)
+                return
+
+            const.expr = Constant(self.current.lexeme)
+            parent.body.append(const)
+
+        self.advance()
+
+    def sync(self):
+        while (
+            self.current.kind != TokenKind.Proc and
+            self.current.kind != TokenKind.EOF
+        ):
+            self.advance()
+
+    def check(self, expected: TokenKind) -> bool:
+        return self.current.kind == expected
+
+    def error(self, message: str):
+        print("Error: %s:%s:%s:" % self.current.loc, message, file=sys.stderr)
+        self.sync()
+
     def advance(self):
         try:
             self.current = self.tokens.pop(0)
         except IndexError:
-            self.current = Token(TokenKind.EOF, '')
+            self.current = Token(TokenKind.EOF, '', self.current.loc)
 
 class Lexer:
-    def __init__(self):
-        pass
-
     def init_lexer(self, filename: str, source: str):
         self.source = source
         self.position = 0
@@ -119,7 +210,11 @@ def scan_tokens(lexer: Lexer):
 
         # Integer
         elif ch.isdigit():
-            pass
+            start = lexer.position
+            while lexer.char.isdigit():
+                lexer.advance()
+
+            yield Token(TokenKind.Int, lexer.source[start:lexer.position], loc)
 
         else:
             lexer.advance()
@@ -156,8 +251,15 @@ def compile_file(input_file, output):
 
     tokens = [t for t in scan_tokens(lexer)]
 
+    # One module per file?
+    module = Module()
+
     parser = Parser(tokens)
-    parser.parse()
+    parser.parse(module)
+
+    print()
+    dump(module)
+    print()
 
 def usage(name):
     print("Usage: %s [OPTIONS...] input\n" % name)

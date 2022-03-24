@@ -1,3 +1,6 @@
 proc test in
-    
+    const x = 7
+end
+
+proc another_function in
 end
